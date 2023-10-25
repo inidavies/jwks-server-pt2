@@ -19,59 +19,64 @@ async function generateKeyPairs() {
 }
 
 function generateToken() {
-  const payload = {
-    user: 'sampleUser',
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 3600
-  };
-  const options = {
-    algorithm: 'RS256',
-    header: {
-      typ: 'JWT',
-      alg: 'RS256',
-      kid: keyPair.kid
-    }
-  };
-
+  let expiry = Math.floor(Date.now() / 1000) + 3600
   //store key in db
-  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), payload.exp], error => {
+  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), expiry], error => {
     if (error) throw error;
     console.log('Valid key stored in db')
   })
 
   let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
+  db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, private) => {
     if(error) throw error;
     //console.log(private[0].key);
+
+    const payload = {
+      user: 'sampleUser',
+      iat: Math.floor(Date.now() / 1000),
+      exp: expiry
+    };
+    const options = {
+      algorithm: 'RS256',
+      header: {
+        typ: 'JWT',
+        alg: 'RS256',
+        kid: String(private[0].kid)
+      }
+    };
+
     token = jwt.sign(payload, private[0].key, options);
   })
 }
 
 function generateExpiredJWT() {
-  const payload = {
-    user: 'sampleUser',
-    iat: Math.floor(Date.now() / 1000) - 30000,
-    exp: Math.floor(Date.now() / 1000) - 3600
-  };
-  const options = {
-    algorithm: 'RS256',
-    header: {
-      typ: 'JWT',
-      alg: 'RS256',
-      kid: expiredKeyPair.kid
-    }
-  };
+  let expiry = Math.floor(Date.now() / 1000) - 3600;
 
   //store key in db
-  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), payload.exp], error => {
+  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), expiry], error => {
     if (error) throw error;
     console.log('Expired key stored in db')
   })
 
   let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT key FROM keys WHERE exp <= ?', [now], (error, private) => {
+  db.all('SELECT * FROM keys WHERE exp <= ?', [now], (error, private) => {
     if(error) throw error;
     //console.log(private[0].key);
+
+    const payload = {
+      user: 'sampleUser',
+      iat: Math.floor(Date.now() / 1000) - 30000,
+      exp: expiry
+    };
+    const options = {
+      algorithm: 'RS256',
+      header: {
+        typ: 'JWT',
+        alg: 'RS256',
+        kid: String(private[0].kid)
+      }
+    };
+
     expiredToken = jwt.sign(payload, private[0].key, options);
   })
 }
@@ -92,13 +97,13 @@ app.all('/.well-known/jwks.json', (req, res, next) => {
 });
 
 app.get('/.well-known/jwks.json', (req, res) => {
-  /**let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, private) => {
-    if(error) throw error;
-    console.log(private[0]);
-    res.setHeader('Content-Type', 'application/json');
-    res.json(private[0]);
-  })**/
+  //let now = Math.floor(Date.now() / 1000)
+  //db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, private) => {
+  //  if(error) throw error;
+  //  console.log(private[0]);
+  //  res.setHeader('Content-Type', 'application/json');
+  //  res.json(private[0]);
+  //})
 
   const validKeys = [keyPair].filter(key => !key.expired);
   res.setHeader('Content-Type', 'application/json');
