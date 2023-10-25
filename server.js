@@ -1,6 +1,9 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const jose = require('node-jose');
+const sqlite3 = require('sqlite3').verbose();
+let db = new sqlite3.Database('./totally_not_my_privateKeys.db')
+db.run('CREATE TABLE IF NOT EXISTS keys( kid INTEGER PRIMARY KEY AUTOINCREMENT, key BLOB NOT NULL, exp INTEGER NOT NULL)')
 
 const app = express();
 const port = 8080;
@@ -30,7 +33,18 @@ function generateToken() {
     }
   };
 
-  token = jwt.sign(payload, keyPair.toPEM(true), options);
+  //store key in db
+  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair, payload.exp], error => {
+    if (error) throw error;
+    console.log('Valid key stored in db')
+  })
+
+  let now = Math.floor(Date.now() / 1000)
+  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
+    if(error) throw error;
+    console.log(private[0].key);
+    token = jwt.sign(payload, private[0].key, options);
+  })
 }
 
 function generateExpiredJWT() {
@@ -48,7 +62,18 @@ function generateExpiredJWT() {
     }
   };
 
-  expiredToken = jwt.sign(payload, expiredKeyPair.toPEM(true), options);
+  //store key in db
+  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), payload.exp], error => {
+    if (error) throw error;
+    console.log('Expired key stored in db')
+  })
+
+  let now = Math.floor(Date.now() / 1000)
+  db.all('SELECT key FROM keys WHERE exp <= ?', [now], (error, private) => {
+    if(error) throw error;
+    console.log(private[0].key);
+    expiredToken = jwt.sign(payload, private[0].key, options);
+  })
 }
 
 app.all('/auth', (req, res, next) => {
@@ -84,6 +109,8 @@ generateKeyPairs().then(() => {
   generateToken()
   generateExpiredJWT()
   app.listen(port, () => {
+    
     console.log(`Server started on http://localhost:${port}`);
   });
 });
+
