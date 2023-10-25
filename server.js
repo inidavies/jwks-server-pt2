@@ -34,7 +34,7 @@ function generateToken() {
   };
 
   //store key in db
-  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair, payload.exp], error => {
+  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), payload.exp], error => {
     if (error) throw error;
     console.log('Valid key stored in db')
   })
@@ -92,9 +92,13 @@ app.all('/.well-known/jwks.json', (req, res, next) => {
 });
 
 app.get('/.well-known/jwks.json', (req, res) => {
-  const validKeys = [keyPair].filter(key => !key.expired);
-  res.setHeader('Content-Type', 'application/json');
-  res.json({ keys: validKeys.map(key => key.toJSON()) });
+  let now = Math.floor(Date.now() / 1000)
+  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
+    if(error) throw error;
+    console.log(private[0].key);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(private);
+  })
 });
 
 app.post('/auth', (req, res) => {
