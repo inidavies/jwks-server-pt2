@@ -95,10 +95,14 @@ app.get('/.well-known/jwks.json', (req, res) => {
   let now = Math.floor(Date.now() / 1000)
   db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
     if(error) throw error;
-    console.log(private[0].key);
+    //console.log(private[0].key);
     res.setHeader('Content-Type', 'application/json');
     res.json(private);
   })
+
+  //const validKeys = [keyPair].filter(key => !key.expired);
+  //res.setHeader('Content-Type', 'application/json');
+  //res.json({ keys: validKeys.map(key => key.toJSON()) });
 });
 
 app.post('/auth', (req, res) => {
