@@ -42,7 +42,7 @@ function generateToken() {
   let now = Math.floor(Date.now() / 1000)
   db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
     if(error) throw error;
-    console.log(private[0].key);
+    //console.log(private[0].key);
     token = jwt.sign(payload, private[0].key, options);
   })
 }
@@ -71,7 +71,7 @@ function generateExpiredJWT() {
   let now = Math.floor(Date.now() / 1000)
   db.all('SELECT key FROM keys WHERE exp <= ?', [now], (error, private) => {
     if(error) throw error;
-    console.log(private[0].key);
+    //console.log(private[0].key);
     expiredToken = jwt.sign(payload, private[0].key, options);
   })
 }
@@ -92,17 +92,17 @@ app.all('/.well-known/jwks.json', (req, res, next) => {
 });
 
 app.get('/.well-known/jwks.json', (req, res) => {
-  let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
+  /**let now = Math.floor(Date.now() / 1000)
+  db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, private) => {
     if(error) throw error;
-    //console.log(private[0].key);
+    console.log(private[0]);
     res.setHeader('Content-Type', 'application/json');
-    res.json(private);
-  })
+    res.json(private[0]);
+  })**/
 
-  //const validKeys = [keyPair].filter(key => !key.expired);
-  //res.setHeader('Content-Type', 'application/json');
-  //res.json({ keys: validKeys.map(key => key.toJSON()) });
+  const validKeys = [keyPair].filter(key => !key.expired);
+  res.setHeader('Content-Type', 'application/json');
+  res.json({ keys: validKeys.map(key => key.toJSON()) });
 });
 
 app.post('/auth', (req, res) => {
@@ -121,4 +121,3 @@ generateKeyPairs().then(() => {
     console.log(`Server started on http://localhost:${port}`);
   });
 });
-
