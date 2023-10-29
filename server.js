@@ -46,9 +46,9 @@ function generateToken() {
 
   //retrive valid key from db
   let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
+  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, row) => {
     if(error) throw error;
-    token = jwt.sign(payload, private[0].key, options);
+    token = jwt.sign(payload, row[0].key, options);
   })
 }
 
@@ -75,9 +75,9 @@ function generateExpiredJWT() {
 
   //retrieve expired key from db
   let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT key FROM keys WHERE exp <= ?', [now], (error, private) => {
+  db.all('SELECT key FROM keys WHERE exp <= ?', [now], (error, row) => {
     if(error) throw error;
-    expiredToken = jwt.sign(payload, private[0].key, options);
+    expiredToken = jwt.sign(payload, row[0].key, options);
   })
 }
 
@@ -98,18 +98,14 @@ app.all('/.well-known/jwks.json', (req, res, next) => {
 
 app.get('/.well-known/jwks.json', (req, res) => {
   let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, private) => {
+  db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, row) => {
     if(error) throw error;
-    var jwk = pem2jwk(private[0].key)
-    console.log(private[0].kid);
-    const validKeys = [jwk].filter(key => !key.expired);
-    res.setHeader('Content-Type', 'application/json');
-    res.json({ keys: validKeys.map(key => key) });
+    if (row[0].key === keyPair.toPEM(true)){
+      const validKeys = [keyPair].filter(key => !key.expired);
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ keys: validKeys.map(key => key) });
+    }
   })
-
-  //const validKeys = [keyPair].filter(key => !key.expired);
-  //res.setHeader('Content-Type', 'application/json');
-  //res.json({ keys: validKeys.map(key => key.toJSON()) });
 });
 
 app.post('/auth', (req, res) => {
