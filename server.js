@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const jose = require('node-jose');
 const sqlite3 = require('sqlite3').verbose();
 let db = new sqlite3.Database('./totally_not_my_privateKeys.db')
+db.run('DROP TABLE IF EXISTS keys')
 db.run('CREATE TABLE IF NOT EXISTS keys( kid INTEGER PRIMARY KEY AUTOINCREMENT, key BLOB NOT NULL, exp INTEGER NOT NULL)')
 
 const app = express();
@@ -34,16 +35,18 @@ function generateToken() {
   };
 
   //store key in db
-  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), payload.exp], error => {
+  //console.log(keyPair);
+  var pem = keyPair.toPEM(true)
+  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[pem, payload.exp], error => {
     if (error) throw error;
     console.log('Valid key stored in db')
   })
 
+  //retrive valid key from db
   let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, private) => {
+  db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, row) => {
     if(error) throw error;
-    //console.log(private[0].key);
-    token = jwt.sign(payload, private[0].key, options);
+    token = jwt.sign(payload, row[0].key, options);
   })
 }
 
@@ -63,16 +66,16 @@ function generateExpiredJWT() {
   };
 
   //store key in db
-  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[keyPair.toPEM(true), payload.exp], error => {
+  db.run('INSERT INTO keys(key, exp) VALUES(?,?)',[expiredKeyPair.toPEM(true), payload.exp], error => {
     if (error) throw error;
     console.log('Expired key stored in db')
   })
 
+  //retrieve expired key from db
   let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT key FROM keys WHERE exp <= ?', [now], (error, private) => {
+  db.all('SELECT key FROM keys WHERE exp <= ?', [now], (error, row) => {
     if(error) throw error;
-    //console.log(private[0].key);
-    expiredToken = jwt.sign(payload, private[0].key, options);
+    expiredToken = jwt.sign(payload, row[0].key, options);
   })
 }
 
@@ -92,17 +95,15 @@ app.all('/.well-known/jwks.json', (req, res, next) => {
 });
 
 app.get('/.well-known/jwks.json', (req, res) => {
-  /**let now = Math.floor(Date.now() / 1000)
-  db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, private) => {
+  let now = Math.floor(Date.now() / 1000)
+  db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, row) => {
     if(error) throw error;
-    console.log(private[0]);
-    res.setHeader('Content-Type', 'application/json');
-    res.json(private[0]);
-  })**/
-
-  const validKeys = [keyPair].filter(key => !key.expired);
-  res.setHeader('Content-Type', 'application/json');
-  res.json({ keys: validKeys.map(key => key.toJSON()) });
+    if (row[0].key === keyPair.toPEM(true)){
+      const validKeys = [keyPair].filter(key => !key.expired);
+      res.setHeader('Content-Type', 'application/json');
+      res.json({ keys: validKeys.map(key => key) });
+    }
+  })
 });
 
 app.post('/auth', (req, res) => {
