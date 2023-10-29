@@ -121,3 +121,5 @@ generateKeyPairs().then(() => {
     console.log(`Server started on http://localhost:${port}`);
   });
 });
+
+module.exports = app;
