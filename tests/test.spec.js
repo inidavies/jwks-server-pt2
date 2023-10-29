@@ -32,6 +32,7 @@ describe('Server', () => {
     it('generate an expired JWT token and retrieve from the database', async () => {
       const token = await generateExpiredJWT();
 
+      //check that key is stored in db
       db = new sqlite3.Database('./totally_not_my_privateKeys.db');
       let now = Math.floor(Date.now() / 1000)
       db.all('SELECT key FROM keys WHERE exp < ?', [now], (error, row) => {
@@ -39,8 +40,8 @@ describe('Server', () => {
         expect(row[0].key).to.be.a('string');
       })
 
+      //check that token is a string
       expect(token).to.be.a('string');
-      //done();
     });
   });
 
@@ -48,6 +49,7 @@ describe('Server', () => {
     it('generate a valid token and retrieve from the database', async () => {
       const token = await generateToken();
 
+      //check that key is stored in db
       db = new sqlite3.Database('./totally_not_my_privateKeys.db');
       let now = Math.floor(Date.now() / 1000)
       db.all('SELECT key FROM keys WHERE exp > ?', [now], (error, row) => {
@@ -55,8 +57,8 @@ describe('Server', () => {
         expect(row[0].key).to.be.a('string');
       })
 
+      //check that token is a string
       expect(token).to.be.a('string');
-      //done();
     });
   });
 

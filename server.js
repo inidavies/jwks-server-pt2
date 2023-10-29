@@ -100,6 +100,8 @@ app.all('/.well-known/jwks.json', (req, res, next) => {
 });
 
 app.get('/.well-known/jwks.json', (req, res) => {
+
+  // get valid key from db
   let now = Math.floor(Date.now() / 1000)
   db.all('SELECT * FROM keys WHERE exp > ?', [now], (error, row) => {
     if(error) throw error;
@@ -127,4 +129,4 @@ generateKeyPairs().then(() => {
   });
 });
 
-module.exports = {app, generateKeyPairs, keyPair, expiredKeyPair, generateToken, generateExpiredJWT};
+module.exports = {app, generateKeyPairs, generateToken, generateExpiredJWT};
