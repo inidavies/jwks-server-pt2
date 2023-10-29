@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "mocha tests/test.spec.js",
+    "test": "nyc mocha tests/*.js ",
     "start": "node server.js"
   },
   "keywords": [],
@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.2",
     "mocha": "^10.2.0",
     "node-jose": "^2.2.0",
+    "nyc": "^15.1.0",
     "sqlite3": "^5.1.6",
     "supertest": "^6.3.3"
   }

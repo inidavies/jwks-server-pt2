@@ -17,6 +17,8 @@ let expiredToken;
 async function generateKeyPairs() {
   keyPair = await jose.JWK.createKey('RSA', 2048, { alg: 'RS256', use: 'sig' });
   expiredKeyPair = await jose.JWK.createKey('RSA', 2048, { alg: 'RS256', use: 'sig' });
+
+  return [keyPair, expiredKeyPair]
 }
 
 function generateToken() {
@@ -48,6 +50,8 @@ function generateToken() {
     if(error) throw error;
     token = jwt.sign(payload, row[0].key, options);
   })
+  
+  return token;
 }
 
 function generateExpiredJWT() {
@@ -77,6 +81,7 @@ function generateExpiredJWT() {
     if(error) throw error;
     expiredToken = jwt.sign(payload, row[0].key, options);
   })
+  return expiredToken;
 }
 
 app.all('/auth', (req, res, next) => {
@@ -118,9 +123,8 @@ generateKeyPairs().then(() => {
   generateToken()
   generateExpiredJWT()
   app.listen(port, () => {
-    
     console.log(`Server started on http://localhost:${port}`);
   });
 });
 
-module.exports = app;
+module.exports = {app, generateKeyPairs, keyPair, expiredKeyPair, generateToken, generateExpiredJWT};
